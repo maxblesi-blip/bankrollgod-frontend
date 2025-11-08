@@ -1,0 +1,374 @@
+// src/services/api.js
+// Updated API service for Multi-User Backend Integration
+// Keeps all your existing API functions + adds JWT authentication
+
+// Configuration
+const API_CONFIG = {
+  BASE_URL: process.env.REACT_APP_API_URL || 'https://poker-tracker-multiuser.onrender.com/api',
+  TIMEOUT: 10000,
+  RETRY_ATTEMPTS: 3
+};
+
+// Authentication Token Management
+let authToken = localStorage.getItem('poker_auth_token');
+let refreshToken = localStorage.getItem('poker_refresh_token');
+
+// Set authentication tokens
+export const setAuthTokens = (accessToken, refreshTokenValue) => {
+  authToken = accessToken;
+  refreshToken = refreshTokenValue;
+  localStorage.setItem('poker_auth_token', accessToken);
+  localStorage.setItem('poker_refresh_token', refreshTokenValue);
+};
+
+// Clear authentication tokens
+export const clearAuthTokens = () => {
+  authToken = null;
+  refreshToken = null;
+  localStorage.removeItem('poker_auth_token');
+  localStorage.removeItem('poker_refresh_token');
+  localStorage.removeItem('poker_user');
+};
+
+// Get auth headers
+const getAuthHeaders = () => {
+  const headers = {
+    'Content-Type': 'application/json',
+    'Accept': 'application/json'
+  };
+  
+  if (authToken) {
+    headers['Authorization'] = `Bearer ${authToken}`;
+  }
+  
+  return headers;
+};
+
+// Base API request function with JWT handling
+const apiRequest = async (endpoint, options = {}) => {
+  const url = `${API_CONFIG.BASE_URL}${endpoint}`;
+  
+  const config = {
+    method: 'GET',
+    headers: getAuthHeaders(),
+    timeout: API_CONFIG.TIMEOUT,
+    ...options
+  };
+
+  console.log(`🔌 API Call: ${config.method} ${url}`);
+
+  try {
+    const response = await fetch(url, config);
+    
+    // Handle token expiration
+    if (response.status === 401 && authToken) {
+      console.log('🔄 Token expired, attempting refresh...');
+      const refreshed = await refreshAuthToken();
+      if (refreshed) {
+        // Retry with new token
+        config.headers = getAuthHeaders();
+        const retryResponse = await fetch(url, config);
+        if (!retryResponse.ok) {
+          throw new Error(`HTTP error! status: ${retryResponse.status}`);
+        }
+        const data = await retryResponse.json();
+        console.log(`✅ API Response (retry):`, data);
+        return data;
+      } else {
+        // Refresh failed, clear tokens and throw error
+        clearAuthTokens();
+        throw new Error('Authentication expired');
+      }
+    }
+    
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+    console.log(`✅ API Response:`, data);
+    return data;
+
+  } catch (error) {
+    console.error(`❌ API Error:`, error);
+    throw error;
+  }
+};
+
+// Refresh authentication token
+const refreshAuthToken = async () => {
+  if (!refreshToken) return false;
+  
+  try {
+    const response = await fetch(`${API_CONFIG.BASE_URL}/auth/refresh`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refresh_token: refreshToken })
+    });
+    
+    if (!response.ok) return false;
+    
+    const data = await response.json();
+    if (data.success) {
+      setAuthTokens(data.data.access_token, data.data.refresh_token);
+      return true;
+    }
+    
+    return false;
+  } catch (error) {
+    console.error('Token refresh failed:', error);
+    return false;
+  }
+};
+
+// Test backend connection
+export const testConnection = async () => {
+  try {
+    const response = await fetch(`${API_CONFIG.BASE_URL.replace('/api', '')}/health`, {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' }
+    });
+    
+    const data = await response.json();
+    console.log('✅ Backend connection successful');
+    return true;
+  } catch (error) {
+    console.error('❌ Backend connection failed:', error);
+    console.log('🔗 Attempted API Base URL:', API_CONFIG.BASE_URL);
+    return false;
+  }
+};
+
+// Authentication API
+export const authAPI = {
+  login: async (credentials) => {
+    const response = await apiRequest('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify(credentials)
+    });
+    
+    if (response.success) {
+      setAuthTokens(response.data.access_token, response.data.refresh_token);
+      localStorage.setItem('poker_user', JSON.stringify(response.data.user));
+    }
+    
+    return response;
+  },
+
+  register: async (userData) => {
+    const response = await apiRequest('/auth/register', {
+      method: 'POST',
+      body: JSON.stringify(userData)
+    });
+    
+    if (response.success) {
+      setAuthTokens(response.data.access_token, response.data.refresh_token);
+      localStorage.setItem('poker_user', JSON.stringify(response.data.user));
+    }
+    
+    return response;
+  },
+
+  logout: async () => {
+    try {
+      await apiRequest('/auth/logout', { method: 'POST' });
+    } catch (error) {
+      console.error('Logout error:', error);
+    } finally {
+      clearAuthTokens();
+    }
+  },
+
+  getProfile: async () => {
+    const response = await apiRequest('/auth/me');
+    if (response.success) {
+      localStorage.setItem('poker_user', JSON.stringify(response.data.user));
+    }
+    return response;
+  }
+};
+
+// Your existing Bankroll API (unchanged logic, just uses new apiRequest)
+export const bankrollAPI = {
+  getAll: async () => {
+    const response = await apiRequest('/bankrolls');
+    return response.success ? response.data : [];
+  },
+
+  getById: async (id) => {
+    const response = await apiRequest(`/bankrolls/${id}`);
+    return response.success ? response.data : null;
+  },
+
+  create: async (bankrollData) => {
+    const response = await apiRequest('/bankrolls', {
+      method: 'POST',
+      body: JSON.stringify(bankrollData)
+    });
+    return response.success ? response.data : null;
+  },
+
+  update: async (id, updateData) => {
+    const response = await apiRequest(`/bankrolls/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(updateData)
+    });
+    return response.success ? response.data : null;
+  },
+
+  delete: async (id) => {
+    const response = await apiRequest(`/bankrolls/${id}`, {
+      method: 'DELETE',
+      body: JSON.stringify({ confirm: 'DELETE' })
+    });
+    return response.success;
+  },
+
+  getSessions: async (bankrollId, options = {}) => {
+    const params = new URLSearchParams();
+    if (options.limit) params.append('limit', options.limit);
+    if (options.offset) params.append('offset', options.offset);
+    
+    const queryString = params.toString() ? `?${params.toString()}` : '';
+    const response = await apiRequest(`/bankrolls/${bankrollId}/sessions${queryString}`);
+    return response.success ? response.data : [];
+  }
+};
+
+// Your existing Session API (unchanged logic, just uses new apiRequest)
+export const sessionAPI = {
+  getAll: async () => {
+    const response = await apiRequest('/sessions');
+    return response.success ? response.data : [];
+  },
+
+  getActive: async () => {
+    const response = await apiRequest('/sessions?status=running');
+    return response.success ? response.data : [];
+  },
+
+  getById: async (id) => {
+    const response = await apiRequest(`/sessions/${id}`);
+    return response.success ? response.data : null;
+  },
+
+  create: async (sessionData) => {
+    const response = await apiRequest('/sessions', {
+      method: 'POST',
+      body: JSON.stringify(sessionData)
+    });
+    return response.success ? response.data : null;
+  },
+
+  update: async (id, updateData) => {
+    const response = await apiRequest(`/sessions/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(updateData)
+    });
+    return response.success ? response.data : null;
+  },
+
+  complete: async (id, finalData = {}) => {
+    const response = await apiRequest(`/sessions/${id}/complete`, {
+      method: 'POST',
+      body: JSON.stringify(finalData)
+    });
+    return response.success ? response.data : null;
+  },
+
+  getGames: async (sessionId) => {
+    const response = await apiRequest(`/sessions/${sessionId}/games`);
+    return response.success ? response.data : [];
+  }
+};
+
+// Your existing Game API (unchanged logic, just uses new apiRequest)
+export const gameAPI = {
+  getAll: async () => {
+    const response = await apiRequest('/games');
+    return response.success ? response.data : [];
+  },
+
+  getById: async (id) => {
+    const response = await apiRequest(`/games/${id}`);
+    return response.success ? response.data : null;
+  },
+
+  create: async (gameData) => {
+    const response = await apiRequest('/games', {
+      method: 'POST',
+      body: JSON.stringify(gameData)
+    });
+    return response.success ? response.data : null;
+  },
+
+  update: async (id, updateData) => {
+    const response = await apiRequest(`/games/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(updateData)
+    });
+    return response.success ? response.data : null;
+  },
+
+  complete: async (id, finalData) => {
+    const response = await apiRequest(`/games/${id}/complete`, {
+      method: 'POST',
+      body: JSON.stringify(finalData)
+    });
+    return response.success ? response.data : null;
+  },
+
+  bust: async (id) => {
+    const response = await apiRequest(`/games/${id}/bust`, {
+      method: 'POST'
+    });
+    return response.success ? response.data : null;
+  },
+
+  updateEntries: async (id, entries) => {
+    const response = await apiRequest(`/games/${id}/entries`, {
+      method: 'PUT',
+      body: JSON.stringify({ entries })
+    });
+    return response.success ? response.data : null;
+  }
+};
+
+// Check if user is authenticated
+export const isAuthenticated = () => {
+  return !!(authToken && localStorage.getItem('poker_user'));
+};
+
+// Get current user
+export const getCurrentUser = () => {
+  const userStr = localStorage.getItem('poker_user');
+  return userStr ? JSON.parse(userStr) : null;
+};
+
+// Initialize auth state on app start
+export const initializeAuth = () => {
+  authToken = localStorage.getItem('poker_auth_token');
+  refreshToken = localStorage.getItem('poker_refresh_token');
+  
+  // Test token validity if exists
+  if (authToken) {
+    authAPI.getProfile().catch(() => {
+      // Token is invalid, clear it
+      clearAuthTokens();
+    });
+  }
+};
+
+// Export all your existing APIs for backward compatibility
+export { apiRequest };
+export default {
+  bankroll: bankrollAPI,
+  session: sessionAPI,
+  game: gameAPI,
+  auth: authAPI,
+  testConnection,
+  isAuthenticated,
+  getCurrentUser,
+  initializeAuth
+};

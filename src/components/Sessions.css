@@ -1,0 +1,236 @@
+/* Sessions.css */
+
+.sessions-page {
+  padding: 2rem;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.page-header {
+  margin-bottom: 2rem;
+}
+
+.page-header h1 {
+  color: var(--accent-gold);
+  font-size: 2rem;
+  font-weight: 700;
+  margin: 0 0 0.5rem 0;
+}
+
+.page-header p {
+  color: var(--text-secondary);
+  margin: 0;
+  font-size: 1rem;
+}
+
+.page-header-with-back {
+  margin-bottom: 2rem;
+}
+
+.page-header-with-back h1 {
+  color: var(--accent-gold);
+  font-size: 2rem;
+  font-weight: 700;
+  margin: 1rem 0 0 0;
+}
+
+.btn-back {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  color: var(--text-primary);
+  padding: 0.75rem 1.25rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.btn-back:hover {
+  background: var(--primary-green);
+  border-color: var(--primary-green);
+  color: var(--accent-gold);
+  transform: translateX(-4px);
+}
+
+.btn-retry-small {
+  background: var(--accent-red);
+  border: none;
+  border-radius: 8px;
+  color: white;
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  font-weight: 600;
+  margin-top: 1rem;
+  transition: all 0.3s ease;
+}
+
+.btn-retry-small:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(220, 38, 38, 0.4);
+}
+
+/* Bankrolls Selection Grid */
+.bankrolls-selection-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 1.5rem;
+}
+
+.bankroll-selection-card {
+  background: linear-gradient(135deg, var(--bg-card), rgba(13, 95, 63, 0.1));
+  border: 2px solid var(--border-color);
+  border-radius: 16px;
+  padding: 1.5rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.bankroll-selection-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, rgba(13, 95, 63, 0.05), rgba(251, 191, 36, 0.03));
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.bankroll-selection-card:hover {
+  transform: translateY(-5px);
+  border-color: var(--primary-green);
+  box-shadow: 0 10px 30px rgba(13, 95, 63, 0.4);
+}
+
+.bankroll-selection-card:hover::before {
+  opacity: 1;
+}
+
+.bankroll-selection-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  position: relative;
+  z-index: 1;
+}
+
+.bankroll-selection-header h3 {
+  color: var(--text-primary);
+  font-size: 1.3rem;
+  font-weight: 700;
+  margin: 0;
+}
+
+.bankroll-selection-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  position: relative;
+  z-index: 1;
+}
+
+.selection-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.selection-label {
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.selection-value {
+  color: var(--text-primary);
+  font-size: 1.2rem;
+  font-weight: 700;
+}
+
+.selection-value.positive {
+  color: var(--light-green);
+}
+
+.selection-value.negative {
+  color: var(--accent-red);
+}
+
+.selection-footer {
+  padding-top: 1rem;
+  border-top: 1px solid var(--border-color);
+  text-align: center;
+  position: relative;
+  z-index: 1;
+}
+
+.selection-hint {
+  color: var(--accent-gold);
+  font-size: 0.9rem;
+  font-weight: 600;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.bankroll-selection-card:hover .selection-hint {
+  opacity: 1;
+}
+
+/* Loading & Error States */
+.loading-state,
+.error-state {
+  text-align: center;
+  padding: 4rem;
+  color: var(--text-secondary);
+  font-size: 1.1rem;
+}
+
+.error-state {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  align-items: center;
+  color: var(--accent-red);
+}
+
+.empty-state {
+  text-align: center;
+  padding: 4rem 2rem;
+  color: var(--text-secondary);
+}
+
+.empty-state p {
+  font-size: 1.1rem;
+  margin: 0 0 0.5rem 0;
+}
+
+.empty-state small {
+  font-size: 0.9rem;
+  opacity: 0.7;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .sessions-page {
+    padding: 1rem;
+  }
+
+  .bankrolls-selection-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .page-header h1,
+  .page-header-with-back h1 {
+    font-size: 1.5rem;
+  }
+}

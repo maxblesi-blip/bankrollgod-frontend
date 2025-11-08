@@ -1,0 +1,492 @@
+import React, { useState } from 'react';
+import { BrowserRouter as Router, Routes, Route, Link, Navigate } from 'react-router-dom';
+import { AuthProvider, useAuth, BackendStatus } from './context/AuthContext';
+import LoginModal from './components/LoginModal';
+import Dashboard from './components/Dashboard';
+import './App.css';
+
+// Icons als SVG Components (behalten wir bei)
+const SpadeIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M12 2C9 7 5 9 5 14c0 2.8 2.2 5 5 5c1 0 2-.3 2.8-.8L11 22h2l-1.8-3.8c.8.5 1.8.8 2.8.8c2.8 0 5-2.2 5-5c0-5-4-7-7-12z"/>
+  </svg>
+);
+
+const DiamondIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M12 2L5 12l7 10l7-10z"/>
+  </svg>
+);
+
+const HeartIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+  </svg>
+);
+
+const ClubIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M12 2c-1.7 0-3 1.3-3 3c0 .8.3 1.5.8 2c-1.3.2-2.3 1.3-2.3 2.8c0 1.7 1.3 3 3 3c.8 0 1.5-.3 2-.8c0 .3 0 .5 0 .8L11 22h2l-1.5-9.2c0-.3 0-.5 0-.8c.5.5 1.2.8 2 .8c1.7 0 3-1.3 3-3c0-1.4-1-2.5-2.3-2.8c.5-.5.8-1.2.8-2c0-1.7-1.3-3-3-3z"/>
+  </svg>
+);
+
+// Updated LoginButton für Multi-User
+const LoginButton = ({ onOpenModal }) => {
+  return (
+    <button 
+      className="login-btn"
+      onClick={onOpenModal}
+    >
+      <span>Login</span>
+      <SpadeIcon />
+    </button>
+  );
+};
+
+// Updated Header mit Multi-User Support
+const Header = () => {
+  const { isAuthenticated, user, logout, backendConnected } = useAuth();
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+
+  const handleOpenLoginModal = () => {
+    setIsLoginModalOpen(true);
+  };
+
+  const handleCloseLoginModal = () => {
+    setIsLoginModalOpen(false);
+  };
+
+  return (
+    <>
+      <header className="header">
+        <div className="header-content">
+          <Link to="/" className="logo">
+            <SpadeIcon />
+            <span className="logo-text">BankrollGod</span>
+            <DiamondIcon />
+          </Link>
+          
+          {/* Navigation */}
+          <nav className="nav-menu">
+            {isAuthenticated() && (
+              <Link to="/dashboard" className="nav-link">Dashboard</Link>
+            )}
+            {!isAuthenticated() && (
+              <>
+                <a href="#features" className="nav-link">Features</a>
+                <a href="#about" className="nav-link">Über uns</a>
+                <a href="#pricing" className="nav-link">Preise</a>
+              </>
+            )}
+          </nav>
+          
+          <div className="header-actions">
+            {/* Backend Status Indicator */}
+            <div className="backend-status" style={{ marginRight: '1rem' }}>
+              <BackendStatus />
+            </div>
+            
+            {isAuthenticated() ? (
+              <div className="user-menu">
+                <span className="user-name">
+                  {user?.first_name || user?.username || user?.email?.split('@')[0] || 'Spieler'}
+                </span>
+                <button onClick={logout} className="logout-btn">Logout</button>
+              </div>
+            ) : (
+              <LoginButton onOpenModal={handleOpenLoginModal} />
+            )}
+          </div>
+        </div>
+      </header>
+
+      {/* Updated LoginModal für Multi-User */}
+      <EnhancedLoginModal 
+        isOpen={isLoginModalOpen}
+        onClose={handleCloseLoginModal}
+      />
+    </>
+  );
+};
+
+// Enhanced LoginModal für Multi-User Backend
+const EnhancedLoginModal = ({ isOpen, onClose }) => {
+  const [mode, setMode] = useState('login'); // 'login' or 'register'
+  const [formData, setFormData] = useState({
+    email: '',
+    password: '',
+    username: '',
+    first_name: '',
+    last_name: '',
+    remember_me: false
+  });
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+  
+  const { login, register } = useAuth();
+
+  const handleChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: type === 'checkbox' ? checked : value
+    }));
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+    setLoading(true);
+
+    try {
+      let result;
+      if (mode === 'login') {
+        result = await login({
+          email: formData.email,
+          password: formData.password,
+          remember_me: formData.remember_me
+        });
+      } else {
+        result = await register({
+          email: formData.email,
+          password: formData.password,
+          username: formData.username,
+          first_name: formData.first_name,
+          last_name: formData.last_name
+        });
+      }
+      
+      if (result.success) {
+        onClose();
+        // Reset form
+        setFormData({
+          email: '',
+          password: '',
+          username: '',
+          first_name: '',
+          last_name: '',
+          remember_me: false
+        });
+      } else {
+        setError(result.message || `${mode === 'login' ? 'Login' : 'Registration'} failed`);
+      }
+    } catch (error) {
+      setError(`${mode === 'login' ? 'Login' : 'Registration'} failed. Please try again.`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const switchMode = () => {
+    setMode(mode === 'login' ? 'register' : 'login');
+    setError('');
+    setFormData({
+      email: '',
+      password: '',
+      username: '',
+      first_name: '',
+      last_name: '',
+      remember_me: false
+    });
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-content" onClick={e => e.stopPropagation()}>
+        <div className="modal-header">
+          <h2 className="modal-title">
+            {mode === 'login' ? 'Welcome Back' : 'Join BankrollGod'}
+          </h2>
+          <button className="modal-close" onClick={onClose}>×</button>
+        </div>
+        
+        <form onSubmit={handleSubmit} className="modal-form">
+          {error && (
+            <div className="error-message">
+              {error}
+            </div>
+          )}
+
+          {mode === 'register' && (
+            <>
+              <div className="form-row">
+                <input
+                  name="first_name"
+                  type="text"
+                  placeholder="Vorname"
+                  value={formData.first_name}
+                  onChange={handleChange}
+                  className="form-input"
+                />
+                <input
+                  name="last_name"
+                  type="text"
+                  placeholder="Nachname"
+                  value={formData.last_name}
+                  onChange={handleChange}
+                  className="form-input"
+                />
+              </div>
+              
+              <input
+                name="username"
+                type="text"
+                placeholder="Username"
+                value={formData.username}
+                onChange={handleChange}
+                className="form-input"
+                required
+              />
+            </>
+          )}
+          
+          <input
+            name="email"
+            type="email"
+            placeholder="Email"
+            value={formData.email}
+            onChange={handleChange}
+            className="form-input"
+            required
+          />
+          
+          <input
+            name="password"
+            type="password"
+            placeholder="Password"
+            value={formData.password}
+            onChange={handleChange}
+            className="form-input"
+            required
+          />
+
+          {mode === 'login' && (
+            <div className="form-checkbox">
+              <input
+                id="remember_me"
+                name="remember_me"
+                type="checkbox"
+                checked={formData.remember_me}
+                onChange={handleChange}
+              />
+              <label htmlFor="remember_me">Remember me</label>
+            </div>
+          )}
+          
+          <button 
+            type="submit" 
+            className="form-submit"
+            disabled={loading}
+          >
+            {loading ? 'Processing...' : (mode === 'login' ? 'Login' : 'Register')}
+          </button>
+        </form>
+        
+        <div className="modal-footer">
+          <span>
+            {mode === 'login' ? "Don't have an account? " : "Already have an account? "}
+            <button 
+              type="button" 
+              onClick={switchMode}
+              className="link-button"
+            >
+              {mode === 'login' ? 'Sign up' : 'Sign in'}
+            </button>
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// LandingPage bleibt gleich (dein schönes Design)
+const LandingPage = () => {
+  return (
+    <div className="landing-page">
+      <div className="hero-section">
+        <div className="poker-cards-bg">
+          <div className="card card-1">A<SpadeIcon /></div>
+          <div className="card card-2">K<HeartIcon /></div>
+          <div className="card card-3">Q<DiamondIcon /></div>
+          <div className="card card-4">J<ClubIcon /></div>
+        </div>
+        
+        <div className="hero-content">
+          <h1 className="hero-title">
+            <span className="title-line">Meistere deine</span>
+            <span className="title-highlight">Bankroll</span>
+            <span className="title-line">wie ein Profi</span>
+          </h1>
+          
+          <p className="hero-subtitle">
+            Professionelles Bankroll Management für Live und Online Poker - Jetzt mit Multi-User Support!
+          </p>
+          
+          <div className="feature-grid" id="features">
+            <div className="feature-card">
+              <SpadeIcon />
+              <h3>Multi-User System</h3>
+              <p>Persönliche Accounts mit sicherer Datentrennung</p>
+            </div>
+            <div className="feature-card">
+              <DiamondIcon />
+              <h3>Cloud Synchronisation</h3>
+              <p>Deine Daten überall verfügbar</p>
+            </div>
+            <div className="feature-card">
+              <HeartIcon />
+              <h3>Session-Tracking</h3>
+              <p>Live & Online Sessions mit Notizen</p>
+            </div>
+            <div className="feature-card">
+              <ClubIcon />
+              <h3>Enterprise-Grade</h3>
+              <p>Professionelle Sicherheit & Performance</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      {/* Bestehende Sections */}
+      <div className="about-section" id="about">
+        <div className="section-content">
+          <h2>Warum BankrollGod?</h2>
+          <p>Professionelle Pokerspieler wissen: Erfolg ist mehr als nur gute Karten. 
+             Mit unserem Multi-User System trackst du deine Performance sicher in der Cloud.</p>
+          
+          <div className="benefits-grid">
+            <div className="benefit-item">
+              <h4>📊 Datenbasierte Entscheidungen</h4>
+              <p>Tracke deine Performance und erkenne Patterns</p>
+            </div>
+            <div className="benefit-item">
+              <h4>🔒 Sichere Datenhaltung</h4>
+              <p>Deine Daten sind privat und sicher gespeichert</p>
+            </div>
+            <div className="benefit-item">
+              <h4>🌍 Überall verfügbar</h4>
+              <p>Zugriff von jedem Gerät, überall auf der Welt</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div className="pricing-section" id="pricing">
+        <div className="section-content">
+          <h2>Pricing</h2>
+          <div className="pricing-cards">
+            <div className="pricing-card">
+              <h3>Starter</h3>
+              <div className="price">Kostenlos</div>
+              <ul>
+                <li>Unbegrenzte Bankrolls</li>
+                <li>Cloud Synchronisation</li>
+                <li>Basic Statistiken</li>
+                <li>Multi-Device Support</li>
+              </ul>
+              <button className="pricing-btn">Jetzt starten</button>
+            </div>
+            <div className="pricing-card featured">
+              <h3>Pro</h3>
+              <div className="price">€9.99/Monat</div>
+              <ul>
+                <li>Alles aus Starter</li>
+                <li>Erweiterte Analyse</li>
+                <li>Export-Funktionen</li>
+                <li>Priority Support</li>
+              </ul>
+              <button className="pricing-btn">Pro werden</button>
+            </div>
+            <div className="pricing-card">
+              <h3>Team</h3>
+              <div className="price">€29.99/Monat</div>
+              <ul>
+                <li>Alles aus Pro</li>
+                <li>Team-Management</li>
+                <li>Shared Analytics</li>
+                <li>White-Label Option</li>
+              </ul>
+              <button className="pricing-btn">Team starten</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Loading Component
+const LoadingScreen = () => (
+  <div className="loading-screen">
+    <div className="loading-content">
+      <div className="poker-cards-loading">
+        <div className="card-loading">A<SpadeIcon /></div>
+        <div className="card-loading">K<HeartIcon /></div>
+        <div className="card-loading">Q<DiamondIcon /></div>
+        <div className="card-loading">J<ClubIcon /></div>
+      </div>
+      <h2>Loading BankrollGod...</h2>
+      <p>Connecting to your poker data...</p>
+    </div>
+  </div>
+);
+
+// Main App Router mit Multi-User Support
+const AppRouter = () => {
+  const { isAuthenticated, loading } = useAuth();
+
+  if (loading) {
+    return <LoadingScreen />;
+  }
+
+  return (
+    <div className="app">
+      <Header />
+      
+      <main className="main-content">
+        <Routes>
+          <Route path="/" element={<LandingPage />} />
+          
+          {/* Protected Dashboard */}
+          <Route 
+            path="/dashboard" 
+            element={isAuthenticated() ? <Dashboard /> : <Navigate to="/" />} 
+          />
+          
+          {/* Redirects für bestehende Links */}
+          <Route 
+            path="/app" 
+            element={isAuthenticated() ? <Navigate to="/dashboard" /> : <Navigate to="/" />} 
+          />
+          <Route 
+            path="/bankrolls" 
+            element={<Navigate to="/dashboard" />} 
+          />
+          <Route 
+            path="/sessions" 
+            element={<Navigate to="/dashboard" />} 
+          />
+          <Route 
+            path="/analytics" 
+            element={<Navigate to="/dashboard" />} 
+          />
+        </Routes>
+      </main>
+    </div>
+  );
+};
+
+// Main App mit AuthProvider
+const App = () => {
+  return (
+    <AuthProvider>
+      <Router>
+        <AppRouter />
+      </Router>
+    </AuthProvider>
+  );
+};
+
+export default App;
