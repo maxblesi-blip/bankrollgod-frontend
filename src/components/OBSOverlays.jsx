@@ -414,6 +414,7 @@ export const OBSOverlaysIndex = () => {
   }
 };
 
-// ✅ LEGACY SUPPORT: Alternative Namen falls verwendet
+// ✅ Fehlende Exports für App.jsx
+export const BankrollBalanceOverlay = BankrollStandOverlay;
 export const OBSBankrollOverlay = BankrollStandOverlay;
 export const OBSSessionOverlay = SessionProfitOverlay;
