@@ -1,6 +1,6 @@
 /* =============================================================================
    OBS OVERLAYS - TRANSPARENT & MINIMAL CSS
-   Optimiert für direkte Browser-Quellen ohne weitere Einstellungen
+   Ersetzt die bestehende OBSOverlays.css
    ============================================================================= */
 
 /* ✅ RESET: Entferne alle Standard-Hintergründe */
@@ -113,27 +113,6 @@ nav,
   letter-spacing: 1px !important;
 }
 
-/* ✅ SPEZIFISCHE POSITIONIERUNGEN: Falls mehrere Overlays */
-.obs-bankroll { 
-  top: 10px; 
-  left: 10px; 
-}
-
-.obs-cashes { 
-  top: 10px; 
-  left: 10px; 
-}
-
-.obs-buyins { 
-  top: 10px; 
-  left: 10px; 
-}
-
-.obs-session { 
-  top: 10px; 
-  left: 10px; 
-}
-
 /* ✅ ENTFERNE ALLE ANDEREN HINTERGRÜNDE */
 .card,
 .panel,
@@ -196,16 +175,6 @@ div[class*="background"],
   }
 }
 
-@media (max-width: 400px) {
-  .obs-value {
-    font-size: 18px !important;
-  }
-  
-  .obs-label {
-    font-size: 9px !important;
-  }
-}
-
 /* ✅ ANIMATIONEN: Smooth Updates */
 .obs-value,
 .obs-label {
@@ -219,13 +188,4 @@ div[class*="background"],
   outline: none !important;
   border: none !important;
   box-shadow: 2px 2px 4px rgba(0, 0, 0, 0.7) !important;
-}
-
-/* ✅ PRINT/SCREEN CAPTURE: Optimiert */
-@media print, screen {
-  * {
-    background: transparent !important;
-    -webkit-print-color-adjust: exact !important;
-    color-adjust: exact !important;
-  }
 }
