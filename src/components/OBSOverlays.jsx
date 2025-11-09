@@ -1,68 +1,7 @@
 // src/components/OBSOverlays.jsx
-// Einfache OBS Browser Overlays für BankrollGod
+// Production-ready OBS Browser Overlays für BankrollGod
 
 import React, { useState, useEffect } from 'react';
-
-// Echte Daten von BankrollGod API
-const getLiveData = async () => {
-  try {
-    // Bankroll-Daten abrufen
-    const bankrollResponse = await fetch('https://bankrollgod-backend.onrender.com/api/bankrolls');
-    const bankrolls = await bankrollResponse.json();
-    
-    // Aktive Bankroll finden
-    const activeBankroll = bankrolls.find(b => b.status === 'active') || bankrolls[0];
-    
-    if (!activeBankroll) {
-      throw new Error('Keine Bankroll gefunden');
-    }
-
-    // Session-Daten abrufen
-    const sessionResponse = await fetch(`https://bankrollgod-backend.onrender.com/api/bankrolls/${activeBankroll.id}/sessions/active`);
-    let activeSession = null;
-    
-    if (sessionResponse.ok) {
-      activeSession = await sessionResponse.json();
-    }
-
-    return {
-      activeSession: activeSession ? {
-        total_buyins: activeSession.total_buyins || 0,
-        total_cashes: activeSession.total_cashes || 0,
-        cash_count: activeSession.cash_count || 0,
-        session_name: activeSession.name || "Keine aktive Session"
-      } : {
-        total_buyins: 0,
-        total_cashes: 0,
-        cash_count: 0,
-        session_name: "Keine aktive Session"
-      },
-      activeBankroll: {
-        name: activeBankroll.name,
-        current_amount: activeBankroll.current_amount,
-        starting_amount: activeBankroll.starting_amount,
-        currency: activeBankroll.currency
-      }
-    };
-  } catch (error) {
-    console.error('API Error:', error);
-    // Fallback zu Mock-Daten bei Fehlern
-    return {
-      activeSession: {
-        total_buyins: 0,
-        total_cashes: 0,
-        cash_count: 0,
-        session_name: "API Fehler - Keine Daten"
-      },
-      activeBankroll: {
-        name: "Bankroll nicht verfügbar",
-        current_amount: 0,
-        starting_amount: 0,
-        currency: "EUR"
-      }
-    };
-  }
-};
 
 // Utility Functions
 const formatCurrency = (amount, currency = 'EUR') => {
@@ -74,12 +13,12 @@ const formatCurrency = (amount, currency = 'EUR') => {
   }).format(amount);
 };
 
-// Base Overlay Styles
+// Production-ready Styles (ohne CSS-Variablen)
 const overlayBaseStyle = {
   background: 'linear-gradient(135deg, rgba(26, 26, 26, 0.95) 0%, rgba(13, 95, 63, 0.9) 100%)',
   border: '2px solid #0d5f3f',
   borderRadius: '12px',
-  padding: '1rem',
+  padding: '16px',
   color: '#ffffff',
   fontFamily: 'Segoe UI, Tahoma, Geneva, Verdana, sans-serif',
   fontWeight: '600',
@@ -89,14 +28,30 @@ const overlayBaseStyle = {
   alignItems: 'center',
   justifyContent: 'center',
   textAlign: 'center',
-  minHeight: '60px',
+  width: '100%',
+  height: '80px',
+  margin: '0',
+  overflow: 'hidden',
   animation: 'fadeIn 0.5s ease-out'
+};
+
+const overlayContainerStyle = {
+  margin: '0',
+  padding: '0',
+  width: '100vw',
+  height: '100vh',
+  backgroundColor: 'transparent',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  overflow: 'hidden'
 };
 
 const valueStyle = {
   fontSize: '1.8rem',
   fontWeight: '700',
-  color: '#ffffff'
+  color: '#ffffff',
+  margin: '0'
 };
 
 const labelStyle = {
@@ -104,22 +59,29 @@ const labelStyle = {
   color: '#a0a0a0',
   textTransform: 'uppercase',
   letterSpacing: '0.5px',
-  marginBottom: '0.5rem'
+  marginBottom: '4px'
 };
 
 const positiveStyle = { color: '#16a34a' };
 const goldStyle = { color: '#fbbf24' };
 
-// CSS Animation
-const globalStyle = `
+// CSS für Animationen
+const globalCSS = `
+  body { 
+    margin: 0; 
+    padding: 0; 
+    overflow: hidden; 
+    background: transparent; 
+  }
+  
   @keyframes fadeIn {
     from { opacity: 0; transform: scale(0.9); }
     to { opacity: 1; transform: scale(1); }
   }
 `;
 
-// Hook für Live-Daten
-const useLiveData = () => {
+// Hook für Live-Daten mit Bankroll-Parameter
+const useLiveData = (bankrollId) => {
   const [data, setData] = useState({
     activeSession: {
       total_buyins: 0,
@@ -136,100 +98,202 @@ const useLiveData = () => {
   });
   
   useEffect(() => {
-    const fetchData = async () => {
-      const liveData = await getLiveData();
-      setData(liveData);
+    const fetchBankrollData = async () => {
+      try {
+        if (bankrollId) {
+          // Spezifische Bankroll laden
+          const bankrollResponse = await fetch(`http://localhost:3001/api/bankrolls/${bankrollId}`);
+          const bankroll = await bankrollResponse.json();
+          
+          // Aktive Session der Bankroll laden
+          const sessionResponse = await fetch(`http://localhost:3001/api/bankrolls/${bankrollId}/sessions/active`);
+          const session = sessionResponse.ok ? await sessionResponse.json() : null;
+          
+          setData({
+            activeSession: session ? {
+              total_buyins: session.total_buyins || 0,
+              total_cashes: session.total_cashes || 0,
+              cash_count: session.cash_count || 0,
+              session_name: session.name || "Aktive Session"
+            } : {
+              total_buyins: 0,
+              total_cashes: 0,
+              cash_count: 0,
+              session_name: "Keine aktive Session"
+            },
+            activeBankroll: {
+              name: bankroll.name,
+              current_amount: bankroll.current_amount,
+              starting_amount: bankroll.starting_amount,
+              currency: bankroll.currency
+            }
+          });
+        } else {
+          // Fallback zu Mock-Daten wenn keine Bankroll-ID
+          setData({
+            activeSession: {
+              total_buyins: 150.00,
+              total_cashes: 280.00,
+              cash_count: 3,
+              session_name: "Demo Session"
+            },
+            activeBankroll: {
+              name: "Demo Bankroll",
+              current_amount: 850.00,
+              starting_amount: 700.00,
+              currency: "EUR"
+            }
+          });
+        }
+      } catch (error) {
+        console.error('Bankroll data fetch error:', error);
+        // Fallback zu Demo-Daten bei API-Fehlern
+        setData({
+          activeSession: {
+            total_buyins: 150.00,
+            total_cashes: 280.00,
+            cash_count: 3,
+            session_name: "Demo Session (API Fehler)"
+          },
+          activeBankroll: {
+            name: "Demo Bankroll (Offline)",
+            current_amount: 850.00,
+            starting_amount: 700.00,
+            currency: "EUR"
+          }
+        });
+      }
     };
 
     // Sofort laden
-    fetchData();
+    fetchBankrollData();
     
-    // Update alle 5 Sekunden
-    const interval = setInterval(fetchData, 5000);
+    // Update alle 10 Sekunden
+    const interval = setInterval(fetchBankrollData, 10000);
     
     return () => clearInterval(interval);
-  }, []);
+  }, [bankrollId]);
 
   return data;
 };
 
 // 1. Session Buy-Ins Overlay
 export const SessionBuyInsOverlay = () => {
-  const { activeSession } = useLiveData();
+  // URL-Parameter auslesen
+  const urlParams = new URLSearchParams(window.location.search);
+  const bankrollId = urlParams.get('bankroll');
+  
+  const { activeSession } = useLiveData(bankrollId);
   
   return (
-    <>
-      <style>{globalStyle}</style>
-      <div style={{...overlayBaseStyle, flexDirection: 'column', gap: '0.5rem', minWidth: '180px'}}>
+    <div style={overlayContainerStyle}>
+      <style>{globalCSS}</style>
+      <div style={{
+        ...overlayBaseStyle, 
+        flexDirection: 'column', 
+        gap: '8px', 
+        width: '180px',
+        height: '80px'
+      }}>
         <div style={labelStyle}>Buy-Ins</div>
         <div style={{...valueStyle, ...goldStyle}}>
           {formatCurrency(activeSession.total_buyins)}
         </div>
       </div>
-    </>
+    </div>
   );
 };
 
 // 2. Session Cashes Overlay
 export const SessionCashesOverlay = () => {
-  const { activeSession } = useLiveData();
+  const urlParams = new URLSearchParams(window.location.search);
+  const bankrollId = urlParams.get('bankroll');
+  
+  const { activeSession } = useLiveData(bankrollId);
   
   return (
-    <>
-      <style>{globalStyle}</style>
-      <div style={{...overlayBaseStyle, flexDirection: 'column', gap: '0.5rem', minWidth: '180px'}}>
+    <div style={overlayContainerStyle}>
+      <style>{globalCSS}</style>
+      <div style={{
+        ...overlayBaseStyle, 
+        flexDirection: 'column', 
+        gap: '8px', 
+        width: '180px',
+        height: '80px'
+      }}>
         <div style={labelStyle}>Cashes</div>
         <div style={{...valueStyle, ...positiveStyle}}>
           {formatCurrency(activeSession.total_cashes)}
         </div>
       </div>
-    </>
+    </div>
   );
 };
 
 // 3. Bankroll Stand Overlay
 export const BankrollStandOverlay = () => {
-  const { activeBankroll } = useLiveData();
+  const urlParams = new URLSearchParams(window.location.search);
+  const bankrollId = urlParams.get('bankroll');
+  
+  const { activeBankroll } = useLiveData(bankrollId);
   const profit = activeBankroll.current_amount - activeBankroll.starting_amount;
   const isProfit = profit >= 0;
   
   return (
-    <>
-      <style>{globalStyle}</style>
-      <div style={{...overlayBaseStyle, flexDirection: 'column', gap: '0.5rem', minWidth: '200px'}}>
+    <div style={overlayContainerStyle}>
+      <style>{globalCSS}</style>
+      <div style={{
+        ...overlayBaseStyle, 
+        flexDirection: 'column', 
+        gap: '4px', 
+        width: '200px',
+        height: '100px'
+      }}>
         <div style={{...labelStyle, ...goldStyle}}>{activeBankroll.name}</div>
-        <div style={valueStyle}>
+        <div style={{...valueStyle, fontSize: '1.6rem'}}>
           {formatCurrency(activeBankroll.current_amount, activeBankroll.currency)}
         </div>
         <div style={{
           fontSize: '1rem',
           fontWeight: '600',
-          color: isProfit ? '#16a34a' : '#dc2626'
+          color: isProfit ? '#16a34a' : '#dc2626',
+          margin: '0'
         }}>
           {isProfit ? '+' : ''}{formatCurrency(profit, activeBankroll.currency)}
         </div>
       </div>
-    </>
+    </div>
   );
 };
 
-// 4. Anzahl Cashes Overlay
+// 4. Cash Count Overlay
 export const CashCountOverlay = () => {
-  const { activeSession } = useLiveData();
+  const urlParams = new URLSearchParams(window.location.search);
+  const bankrollId = urlParams.get('bankroll');
+  
+  const { activeSession } = useLiveData(bankrollId);
   
   return (
-    <>
-      <style>{globalStyle}</style>
-      <div style={{...overlayBaseStyle, flexDirection: 'column', gap: '0.3rem', minWidth: '120px'}}>
-        <div style={{fontSize: '1.2rem'}}>🏆</div>
-        <div style={{...valueStyle, ...goldStyle}}>{activeSession.cash_count}</div>
+    <div style={overlayContainerStyle}>
+      <style>{globalCSS}</style>
+      <div style={{
+        ...overlayBaseStyle, 
+        flexDirection: 'column', 
+        gap: '4px', 
+        width: '120px',
+        height: '80px'
+      }}>
+        <div style={{fontSize: '1.2rem', margin: '0'}}>🏆</div>
+        <div style={{...valueStyle, ...goldStyle, fontSize: '2rem'}}>
+          {activeSession.cash_count}
+        </div>
         <div style={{...labelStyle, fontSize: '0.8rem'}}>Cashes</div>
       </div>
-    </>
+    </div>
   );
 };
 
-// Overlay Index (Optional - zum Testen)
+// Overlay Index (für Testing)
 export const OBSOverlaysIndex = () => {
   const overlays = [
     { name: 'Session Buy-Ins', path: '/obs/buyins', size: '180x80px' },
@@ -259,7 +323,7 @@ export const OBSOverlaysIndex = () => {
       
       <div style={{
         display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+        gridTemplateColumns: 'repeat(auto-fit, minmin(300px, 1fr))',
         gap: '2rem',
         maxWidth: '1200px',
         margin: '0 auto'
@@ -274,6 +338,26 @@ export const OBSOverlaysIndex = () => {
           }}>
             <h3 style={{color: '#fbbf24', marginBottom: '1rem'}}>{overlay.name}</h3>
             <p style={{color: '#a0a0a0', marginBottom: '1rem'}}>Größe: {overlay.size}</p>
+            
+            {/* Live Preview */}
+            <div style={{
+              background: '#000',
+              borderRadius: '8px',
+              margin: '1rem 0',
+              height: '80px',
+              overflow: 'hidden',
+              border: '1px solid #0d5f3f'
+            }}>
+              <iframe 
+                src={overlay.path}
+                width="100%" 
+                height="80"
+                frameBorder="0"
+                title={overlay.name}
+                style={{border: 'none'}}
+              />
+            </div>
+            
             <div style={{
               background: '#0d5f3f',
               color: '#fbbf24',
@@ -281,41 +365,46 @@ export const OBSOverlaysIndex = () => {
               borderRadius: '8px',
               fontFamily: 'monospace',
               fontSize: '0.9rem',
-              marginBottom: '1rem'
+              marginBottom: '1rem',
+              wordBreak: 'break-all'
             }}>
-              http://localhost:3000{overlay.path}
+              {window.location.origin}{overlay.path}
             </div>
-            <a 
-              href={overlay.path}
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{
-                background: 'linear-gradient(135deg, #0d5f3f, #16a34a)',
-                color: '#fbbf24',
-                padding: '0.8rem 1.5rem',
-                borderRadius: '8px',
-                textDecoration: 'none',
-                fontWeight: '600',
-                display: 'inline-block',
-                marginRight: '1rem'
-              }}
-            >
-              🔗 Preview
-            </a>
-            <button 
-              onClick={() => navigator.clipboard.writeText(`http://localhost:3000${overlay.path}`)}
-              style={{
-                background: 'rgba(251, 191, 36, 0.2)',
-                color: '#fbbf24',
-                border: '2px solid #fbbf24',
-                padding: '0.8rem 1.5rem',
-                borderRadius: '8px',
-                fontWeight: '600',
-                cursor: 'pointer'
-              }}
-            >
-              📋 Copy URL
-            </button>
+            
+            <div style={{display: 'flex', gap: '0.5rem'}}>
+              <a 
+                href={overlay.path}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  background: 'linear-gradient(135deg, #0d5f3f, #16a34a)',
+                  color: '#fbbf24',
+                  padding: '0.8rem 1rem',
+                  borderRadius: '8px',
+                  textDecoration: 'none',
+                  fontWeight: '600',
+                  flex: '1',
+                  textAlign: 'center'
+                }}
+              >
+                🔗 Preview
+              </a>
+              <button 
+                onClick={() => navigator.clipboard.writeText(`${window.location.origin}${overlay.path}`)}
+                style={{
+                  background: 'rgba(251, 191, 36, 0.2)',
+                  color: '#fbbf24',
+                  border: '2px solid #fbbf24',
+                  padding: '0.8rem 1rem',
+                  borderRadius: '8px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  flex: '1'
+                }}
+              >
+                📋 Copy URL
+              </button>
+            </div>
           </div>
         ))}
       </div>

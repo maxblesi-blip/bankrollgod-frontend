@@ -1,0 +1,176 @@
+/* src/components/OBSModal.css */
+
+.obs-modal {
+  max-width: 800px;
+  width: 95vw;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.obs-modal-body {
+  padding: 0;
+}
+
+.obs-info {
+  background: rgba(13, 95, 63, 0.1);
+  padding: 1rem;
+  border-radius: 8px;
+  margin-bottom: 2rem;
+  border-left: 4px solid var(--primary-green, #0d5f3f);
+  color: var(--text-secondary, #a0a0a0);
+}
+
+.obs-urls-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.obs-url-card {
+  background: var(--bg-card, #1a1a1a);
+  border: 2px solid var(--border-color, #333);
+  border-radius: 12px;
+  padding: 1.5rem;
+  transition: all 0.3s ease;
+}
+
+.obs-url-card:hover {
+  border-color: var(--primary-green, #0d5f3f);
+  transform: translateY(-2px);
+}
+
+.obs-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.obs-name {
+  font-weight: 600;
+  color: var(--accent-gold, #fbbf24);
+}
+
+.obs-size-badge {
+  background: var(--primary-green, #0d5f3f);
+  color: var(--accent-gold, #fbbf24);
+  padding: 0.25rem 0.5rem;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.obs-description {
+  color: var(--text-secondary, #a0a0a0);
+  font-size: 0.9rem;
+  margin-bottom: 1rem;
+}
+
+.obs-url-display {
+  background: rgba(26, 26, 26, 0.8);
+  border: 1px solid var(--border-color, #333);
+  border-radius: 8px;
+  padding: 0.75rem;
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.obs-url {
+  flex: 1;
+  color: var(--accent-gold, #fbbf24);
+  font-family: 'Consolas', 'Monaco', monospace;
+  font-size: 0.8rem;
+  word-break: break-all;
+  background: none;
+  border: none;
+}
+
+.copy-url-btn {
+  background: var(--primary-green, #0d5f3f);
+  color: var(--accent-gold, #fbbf24);
+  border: none;
+  padding: 0.5rem;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+  flex-shrink: 0;
+}
+
+.copy-url-btn:hover {
+  background: var(--light-green, #16a34a);
+}
+
+.obs-card-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.preview-btn {
+  background: linear-gradient(135deg, var(--primary-green, #0d5f3f), var(--light-green, #16a34a));
+  color: var(--accent-gold, #fbbf24);
+  text-decoration: none;
+  padding: 0.6rem 1rem;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  transition: all 0.3s ease;
+  flex: 1;
+  text-align: center;
+}
+
+.preview-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(22, 163, 74, 0.3);
+}
+
+.obs-setup-hint {
+  background: var(--bg-card, #1a1a1a);
+  border: 2px solid var(--border-color, #333);
+  border-radius: 12px;
+  padding: 1.5rem;
+}
+
+.obs-setup-hint h4 {
+  color: var(--accent-gold, #fbbf24);
+  margin-bottom: 1rem;
+}
+
+.obs-setup-hint ol {
+  color: var(--text-secondary, #a0a0a0);
+  padding-left: 1.5rem;
+  line-height: 1.6;
+}
+
+/* Action Buttons für Bankroll Cards */
+.selection-footer .selection-actions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: center;
+  margin-top: 0.5rem;
+}
+
+.action-btn {
+  background: transparent;
+  border: 2px solid var(--border-color, #333);
+  color: var(--text-secondary, #a0a0a0);
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  flex: 1;
+}
+
+.action-btn.sessions:hover {
+  border-color: var(--accent-gold, #fbbf24);
+  color: var(--accent-gold, #fbbf24);
+}
+
+.action-btn.obs:hover {
+  border-color: var(--primary-green, #0d5f3f);
+  color: var(--primary-green, #0d5f3f);
+}

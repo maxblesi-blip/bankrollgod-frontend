@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { bankrollAPI, sessionAPI } from '../services/api';
 import SessionHistoryPanel from './SessionHistoryPanel';
+import OBSModal from './OBSModal';
 import './Sessions.css';
 
 const formatCurrency = (amount, currency = 'EUR') => {
@@ -17,6 +18,7 @@ const formatCurrency = (amount, currency = 'EUR') => {
 const Sessions = () => {
   const [bankrolls, setBankrolls] = useState([]);
   const [selectedBankroll, setSelectedBankroll] = useState(null);
+  const [showOBSModal, setShowOBSModal] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -103,7 +105,6 @@ const Sessions = () => {
             <div 
               key={bankroll.id} 
               className="bankroll-selection-card"
-              onClick={() => setSelectedBankroll(bankroll)}
             >
               <div className="bankroll-selection-header">
                 <h3>{bankroll.name}</h3>
@@ -129,7 +130,26 @@ const Sessions = () => {
               </div>
               
               <div className="selection-footer">
-                <span className="selection-hint">Klicken für Sessions →</span>
+                <div className="selection-actions">
+                  <button 
+                    className="action-btn sessions"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedBankroll(bankroll);
+                    }}
+                  >
+                    📊 Sessions
+                  </button>
+                  <button 
+                    className="action-btn obs"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowOBSModal(bankroll);
+                    }}
+                  >
+                    🎥 OBS
+                  </button>
+                </div>
               </div>
             </div>
           );
@@ -141,6 +161,14 @@ const Sessions = () => {
           <p>Keine Bankrolls vorhanden</p>
           <small>Erstelle zuerst eine Bankroll im Bankrolls-Menü</small>
         </div>
+      )}
+
+      {/* ✅ NEU: OBS Modal */}
+      {showOBSModal && (
+        <OBSModal 
+          bankroll={showOBSModal} 
+          onClose={() => setShowOBSModal(null)} 
+        />
       )}
     </div>
   );
