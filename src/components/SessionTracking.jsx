@@ -193,6 +193,53 @@ const ActiveSession = ({ session, bankroll, onUpdate, onEnd }) => {
     }
   };
 
+  // ✅ FIXED: Special function for entry updates using working endpoint
+  const handleUpdateEntries = async (gameId, entries) => {
+    setLoading(true);
+    try {
+      console.log(`🔧 Updating entries for game ${gameId} to ${entries}`);
+      
+      const response = await fetch(`https://bankrollgod-backend.onrender.com/api/games/${gameId}/entries-fix`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({ entries: parseInt(entries) })
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      const result = await response.json();
+      
+      if (result.success) {
+        console.log('✅ Entries updated successfully:', result.data.entries);
+        
+        // Refresh games list to show updated data
+        await refreshSessionData();
+        
+        // Also refresh bankroll
+        const bankrollResponse = await apiService.getBankroll(session.bankroll_id);
+        if (bankrollResponse.success) {
+          setCurrentBankroll(bankrollResponse.data);
+        }
+        
+        return true;
+      } else {
+        throw new Error(result.message || 'Update failed');
+      }
+    } catch (error) {
+      console.error('❌ Entry update error:', error);
+      alert('Fehler beim Aktualisieren der Entries: ' + error.message);
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ✅ FIXED: General update function for other game updates
   const handleUpdateGame = async (gameId, updates) => {
     setLoading(true);
     try {
@@ -206,9 +253,13 @@ const ActiveSession = ({ session, bankroll, onUpdate, onEnd }) => {
         
         // Refresh games list
         await refreshSessionData();
+        return true;
       }
+      return false;
     } catch (error) {
+      console.error('❌ Game update error:', error);
       alert('Fehler beim Aktualisieren: ' + error.message);
+      return false;
     } finally {
       setLoading(false);
     }
@@ -397,7 +448,8 @@ const ActiveSession = ({ session, bankroll, onUpdate, onEnd }) => {
               <GameCard
                 key={game.id}
                 game={game}
-                onUpdate={handleUpdateGame}
+                onUpdateEntries={handleUpdateEntries}
+                onUpdateGame={handleUpdateGame}
                 onRemove={handleRemoveGame}
                 loading={loading}
               />
@@ -409,8 +461,8 @@ const ActiveSession = ({ session, bankroll, onUpdate, onEnd }) => {
   );
 };
 
-// Game Card Component
-const GameCard = ({ game, onUpdate, onRemove, loading }) => {
+// ✅ FIXED: Game Card Component with proper entry update handling
+const GameCard = ({ game, onUpdateEntries, onUpdateGame, onRemove, loading }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState({
     name: game.name,
@@ -426,9 +478,35 @@ const GameCard = ({ game, onUpdate, onRemove, loading }) => {
   const profit = winnings - totalCost;
   const isFinished = game.status === 'completed';
 
-  const handleSave = () => {
-    onUpdate(game.id, editForm);
-    setIsEditing(false);
+  // ✅ FIXED: Smart save function that handles entries vs other updates
+  const handleSave = async () => {
+    let success = true;
+    
+    // Check if entries changed - use special endpoint
+    if (editForm.entries !== game.entries) {
+      console.log(`🎮 Entry change: ${game.entries} → ${editForm.entries}`);
+      success = await onUpdateEntries(game.id, editForm.entries);
+      if (!success) return;
+    }
+    
+    // Check if other fields changed - use general update
+    const otherChanges = {};
+    if (editForm.name !== game.name) otherChanges.name = editForm.name;
+    if (editForm.buy_in !== game.buy_in) otherChanges.buy_in = editForm.buy_in;
+    if (editForm.winnings !== (game.winnings || 0)) otherChanges.winnings = editForm.winnings;
+    if (editForm.position_finished !== (game.position_finished || '')) otherChanges.position_finished = editForm.position_finished;
+    if (editForm.total_players !== (game.total_players || '')) otherChanges.total_players = editForm.total_players;
+    
+    if (Object.keys(otherChanges).length > 0) {
+      console.log(`🎮 Other changes:`, otherChanges);
+      success = await onUpdateGame(game.id, otherChanges);
+      if (!success) return;
+    }
+    
+    // Only close editing if all updates were successful
+    if (success) {
+      setIsEditing(false);
+    }
   };
 
   if (isEditing) {
@@ -452,7 +530,7 @@ const GameCard = ({ game, onUpdate, onRemove, loading }) => {
             <input
               type="number"
               value={editForm.entries}
-              onChange={e => setEditForm({...editForm, entries: e.target.value})}
+              onChange={e => setEditForm({...editForm, entries: parseInt(e.target.value) || 1})}
               placeholder="Entries"
               min="1"
             />
@@ -466,7 +544,7 @@ const GameCard = ({ game, onUpdate, onRemove, loading }) => {
           />
           <div className="edit-actions">
             <button className="btn-save-mini" onClick={handleSave} disabled={loading}>
-              Save
+              {loading ? 'Saving...' : 'Save'}
             </button>
             <button className="btn-cancel-mini" onClick={() => setIsEditing(false)}>
               Cancel
