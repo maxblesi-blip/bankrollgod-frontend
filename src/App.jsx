@@ -1,22 +1,23 @@
 // src/App.jsx
-// Updated App.jsx with Compact Login Modal and ProfileSettings Integration + OBS Routes + OBS DOCS
+// Complete App.jsx with Compact Login Modal, ProfileSettings Integration + All OBS Routes
 
 import React, { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth, ProtectedRoute, BackendStatus } from './context/AuthContext';
-import CompactLoginModal from './components/CompactLoginModal'; // Neue kompakte Version
+import CompactLoginModal from './components/CompactLoginModal';
 import ProfileSettings from './components/ProfileSettings'; 
 import Dashboard from './components/Dashboard';
-import OBSDocumentation from './components/OBSDocumentation';  // ← NEU: OBS DOCS
+import OBSDocumentation from './components/OBSDocumentation';
 import './App.css';
 
-// ✅ NEU: Einfache OBS Overlay Imports
+// ✅ COMPLETE: All OBS Overlay Imports
 import {
   OBSOverlaysIndex,
   SessionBuyInsOverlay,
   SessionCashesOverlay,
   BankrollStandOverlay,
-  CashCountOverlay
+  CashCountOverlay,
+  SessionProfitOverlay  // ← NEU: Session Profit/Loss Overlay
 } from './components/OBSOverlays';
 
 // Clean Unicode-based card suit icons
@@ -92,7 +93,7 @@ const Header = () => {
             {isAuthenticated() && (
               <>
                 <Link to="/dashboard" className="nav-link">Dashboard</Link>
-                <Link to="/obs-docs" className="nav-link">🎥 OBS Integration</Link>  {/* ← NEU */}
+                <Link to="/obs-docs" className="nav-link">🎥 OBS Integration</Link>
               </>
             )}
             {!isAuthenticated() && (
@@ -105,7 +106,6 @@ const Header = () => {
           </nav>
           
           <div className="header-actions">
-            
             {isAuthenticated() ? (
               <div className="user-menu-container">
                 <button 
@@ -337,7 +337,7 @@ const AppRouter = () => {
             } 
           />
           
-          {/* ✅ NEU: OBS DOKUMENTATION ROUTE - Geschützt für authentifizierte User */}
+          {/* ✅ OBS Documentation Route - Protected for authenticated users */}
           <Route 
             path="/obs-docs" 
             element={
@@ -347,13 +347,13 @@ const AppRouter = () => {
             } 
           />
           
-          {/* ✅ NEU: OBS OVERLAY ROUTES - Nicht geschützt, da für OBS Browser-Quellen */}
-          {/* ✅ OBS OVERLAY ROUTES - Einfache Browser Sources */}
-<Route path="/obs" element={<OBSOverlaysIndex />} />
-<Route path="/obs/buyins" element={<SessionBuyInsOverlay />} />
-<Route path="/obs/cashes" element={<SessionCashesOverlay />} />
-<Route path="/obs/bankroll" element={<BankrollStandOverlay />} />
-<Route path="/obs/cash-count" element={<CashCountOverlay />} />
+          {/* ✅ COMPLETE: ALL OBS OVERLAY ROUTES - Unprotected for OBS Browser Sources */}
+          <Route path="/obs" element={<OBSOverlaysIndex />} />
+          <Route path="/obs/buyins" element={<SessionBuyInsOverlay />} />
+          <Route path="/obs/cashes" element={<SessionCashesOverlay />} />
+          <Route path="/obs/bankroll" element={<BankrollStandOverlay />} />
+          <Route path="/obs/cash-count" element={<CashCountOverlay />} />
+          <Route path="/obs/session-profit" element={<SessionProfitOverlay />} />
           
           {/* Legacy redirects */}
           <Route path="/app" element={<Navigate to="/dashboard" replace />} />
