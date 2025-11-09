@@ -1,5 +1,5 @@
 // src/components/OBSOverlays.jsx
-// Production-ready OBS Browser Overlays für BankrollGod
+// KORRIGIERTE VERSION - Production-ready OBS Browser Overlays für BankrollGod
 
 import React, { useState, useEffect } from 'react';
 
@@ -10,7 +10,7 @@ const getApiBaseUrl = () => {
   const hostname = window.location.hostname;
   
   if (hostname === 'localhost' || hostname === '127.0.0.1') {
-    return 'http://localhost:5000';  // ✅ KORRIGIERT: Port 5000 statt 3001
+    return 'http://localhost:5000';
   } else {
     // Production API URL - ersetze mit deiner echten Backend URL
     return process.env.REACT_APP_BACKEND_URL || 'https://bankrollgod-backend.onrender.com';
@@ -100,7 +100,7 @@ const globalCSS = `
   }
 `;
 
-// ✅ Hook für Live-Daten - KORRIGIERTE VERSION
+// ✅ KORRIGIERTE Live-Daten Hook
 const useLiveData = (bankrollId) => {
   const [data, setData] = useState({
     activeSession: {
@@ -108,16 +108,20 @@ const useLiveData = (bankrollId) => {
       total_cashes: 0,
       cash_count: 0,
       session_name: "Lädt...",
-      profit: 0
+      profit: 0,
+      games_count: 0,
+      status: 'inactive'
     },
     activeBankroll: {
       name: "Lädt...",
       current_amount: 0,
       starting_amount: 0,
+      total_profit: 0,
       currency: "EUR"
     },
     isLoading: true,
-    lastUpdate: null
+    lastUpdate: null,
+    error: null
   });
   
   useEffect(() => {
@@ -125,66 +129,91 @@ const useLiveData = (bankrollId) => {
     
     const fetchBankrollData = async () => {
       try {
-        if (bankrollId && apiBaseUrl) {
-          console.log(`🎥 Fetching OBS data for bankroll ${bankrollId} from ${apiBaseUrl}`);
-          
-          // ✅ Neue OBS-Endpoints verwenden
-          const [bankrollResponse, sessionResponse] = await Promise.all([
-            fetch(`${apiBaseUrl}/api/obs/bankroll/${bankrollId}`),
-            fetch(`${apiBaseUrl}/api/obs/session/${bankrollId}/active`)
-          ]);
-          
-          if (bankrollResponse.ok && sessionResponse.ok) {
-            const bankrollResult = await bankrollResponse.json();
-            const sessionResult = await sessionResponse.json();
-            
-            if (bankrollResult.success && sessionResult.success) {
-              setData({
-                activeSession: sessionResult.data,
-                activeBankroll: bankrollResult.data,
-                isLoading: false,
-                lastUpdate: new Date().toLocaleTimeString()
-              });
-              
-              console.log('✅ Live data loaded:', bankrollResult.data.name);
-              return;
-            }
-          }
-          
-          throw new Error(`API Error: ${bankrollResponse.status}/${sessionResponse.status}`);
-          
-        } else {
-          throw new Error('No bankroll ID provided');
+        if (!bankrollId || !apiBaseUrl) {
+          throw new Error('Bankroll ID oder API URL fehlt');
         }
+
+        console.log(`🎥 Fetching OBS data for bankroll ${bankrollId} from ${apiBaseUrl}`);
+        
+        // ✅ KORRIGIERTE API-Aufrufe mit den neuen OBS-Endpunkten
+        const [bankrollResponse, sessionResponse] = await Promise.all([
+          fetch(`${apiBaseUrl}/api/obs/bankroll/${bankrollId}`),
+          fetch(`${apiBaseUrl}/api/obs/session/${bankrollId}/active`)
+        ]);
+        
+        if (bankrollResponse.ok && sessionResponse.ok) {
+          const bankrollResult = await bankrollResponse.json();
+          const sessionResult = await sessionResponse.json();
+          
+          if (bankrollResult.success && sessionResult.success) {
+            console.log('✅ OBS Data loaded successfully');
+            console.log('📊 Session Data:', sessionResult.data);
+            console.log('💰 Bankroll Data:', bankrollResult.data);
+            
+            setData({
+              activeSession: {
+                ...sessionResult.data,
+                // ✅ WICHTIG: Buy-ins kommen bereits korrekt berechnet vom Backend
+                total_buyins: sessionResult.data.total_buyins || 0,
+                total_cashes: sessionResult.data.total_cashes || 0,
+                cash_count: sessionResult.data.cash_count || 0,
+                profit: sessionResult.data.profit || 0,
+                session_name: sessionResult.data.session_name || 'Keine aktive Session',
+                games_count: sessionResult.data.games_count || 0,
+                status: sessionResult.data.status || 'inactive'
+              },
+              activeBankroll: {
+                ...bankrollResult.data,
+                // ✅ Bankroll-Daten kommen korrekt vom Backend
+                current_amount: bankrollResult.data.current_amount || 0,
+                starting_amount: bankrollResult.data.starting_amount || 0,
+                total_profit: bankrollResult.data.total_profit || 0,
+                name: bankrollResult.data.name || 'Unbekannte Bankroll',
+                currency: bankrollResult.data.currency || 'EUR'
+              },
+              isLoading: false,
+              lastUpdate: new Date().toLocaleTimeString(),
+              error: null
+            });
+            return;
+          }
+        }
+        
+        throw new Error(`API Error: Bankroll ${bankrollResponse.status}, Session ${sessionResponse.status}`);
+        
       } catch (error) {
         console.error('❌ OBS API Error:', error);
         
-        // Fallback nur bei Fehlern
-        setData({
+        // ✅ Bessere Fehlerbehandlung
+        setData(prevData => ({
           activeSession: {
             total_buyins: 0,
             total_cashes: 0,
             cash_count: 0,
-            session_name: `Offline (${bankrollId || 'No ID'})`,
-            profit: 0
+            session_name: `Offline (Error: ${error.message})`,
+            profit: 0,
+            games_count: 0,
+            status: 'error'
           },
           activeBankroll: {
-            name: `Bankroll ${bankrollId || 'Unknown'} (Offline)`,
+            name: `Bankroll ${bankrollId} (Offline)`,
             current_amount: 0,
             starting_amount: 0,
+            total_profit: 0,
             currency: "EUR"
           },
           isLoading: false,
-          lastUpdate: new Date().toLocaleTimeString()
-        });
+          lastUpdate: new Date().toLocaleTimeString(),
+          error: error.message
+        }));
       }
     };
 
     // Sofort laden
     fetchBankrollData();
     
-    // Update alle 5 Sekunden für Live-Daten
-    const interval = setInterval(fetchBankrollData, 5000);
+    // ✅ Update alle 3 Sekunden für schnellere Live-Daten
+    const interval = setInterval(fetchBankrollData, 3000);
     
     return () => clearInterval(interval);
   }, [bankrollId]);
@@ -192,12 +221,12 @@ const useLiveData = (bankrollId) => {
   return data;
 };
 
-// 1. Session Buy-Ins Overlay
+// ✅ KORRIGIERTE Session Buy-Ins Overlay
 export const SessionBuyInsOverlay = () => {
   const urlParams = new URLSearchParams(window.location.search);
   const bankrollId = urlParams.get('bankroll');
   
-  const { activeSession, isLoading } = useLiveData(bankrollId);
+  const { activeSession, activeBankroll, isLoading, error } = useLiveData(bankrollId);
   
   return (
     <div style={overlayContainerStyle}>
@@ -208,15 +237,21 @@ export const SessionBuyInsOverlay = () => {
         gap: '8px', 
         width: '180px',
         height: '80px',
-        opacity: isLoading ? 0.7 : 1
+        opacity: isLoading ? 0.7 : 1,
+        borderColor: error ? '#dc2626' : '#0d5f3f'
       }}>
-        <div style={labelStyle}>Buy-Ins</div>
-        <div style={{...valueStyle, ...goldStyle}}>
-          {formatCurrency(activeSession.total_buyins)}
+        <div style={labelStyle}>
+          {error ? 'ERROR' : 'Buy-Ins'}
         </div>
-        {bankrollId && (
+        <div style={{...valueStyle, ...goldStyle}}>
+          {error 
+            ? 'N/A' 
+            : formatCurrency(activeSession.total_buyins, activeBankroll.currency)
+          }
+        </div>
+        {bankrollId && !error && (
           <div style={{...labelStyle, fontSize: '0.7rem', opacity: 0.6}}>
-            ID: {bankrollId}
+            {activeSession.games_count} Games
           </div>
         )}
       </div>
@@ -224,12 +259,12 @@ export const SessionBuyInsOverlay = () => {
   );
 };
 
-// 2. Session Cashes Overlay
+// ✅ KORRIGIERTE Session Cashes Overlay
 export const SessionCashesOverlay = () => {
   const urlParams = new URLSearchParams(window.location.search);
   const bankrollId = urlParams.get('bankroll');
   
-  const { activeSession, isLoading } = useLiveData(bankrollId);
+  const { activeSession, activeBankroll, isLoading, error } = useLiveData(bankrollId);
   
   return (
     <div style={overlayContainerStyle}>
@@ -240,15 +275,21 @@ export const SessionCashesOverlay = () => {
         gap: '8px', 
         width: '180px',
         height: '80px',
-        opacity: isLoading ? 0.7 : 1
+        opacity: isLoading ? 0.7 : 1,
+        borderColor: error ? '#dc2626' : '#0d5f3f'
       }}>
-        <div style={labelStyle}>Cashes</div>
-        <div style={{...valueStyle, ...positiveStyle}}>
-          {formatCurrency(activeSession.total_cashes)}
+        <div style={labelStyle}>
+          {error ? 'ERROR' : 'Cashes'}
         </div>
-        {bankrollId && (
+        <div style={{...valueStyle, ...positiveStyle}}>
+          {error 
+            ? 'N/A'
+            : formatCurrency(activeSession.total_cashes, activeBankroll.currency)
+          }
+        </div>
+        {bankrollId && !error && (
           <div style={{...labelStyle, fontSize: '0.7rem', opacity: 0.6}}>
-            ID: {bankrollId}
+            {activeSession.cash_count} Wins
           </div>
         )}
       </div>
@@ -256,14 +297,14 @@ export const SessionCashesOverlay = () => {
   );
 };
 
-// 3. Bankroll Stand Overlay
-export const BankrollStandOverlay = () => {
+// ✅ KORRIGIERTE Bankroll Balance Overlay
+export const BankrollBalanceOverlay = () => {
   const urlParams = new URLSearchParams(window.location.search);
   const bankrollId = urlParams.get('bankroll');
   
-  const { activeBankroll, isLoading } = useLiveData(bankrollId);
-  const profit = activeBankroll.current_amount - activeBankroll.starting_amount;
-  const isProfit = profit >= 0;
+  const { activeBankroll, isLoading, error } = useLiveData(bankrollId);
+  
+  const isProfit = activeBankroll.total_profit >= 0;
   
   return (
     <div style={overlayContainerStyle}>
@@ -271,28 +312,28 @@ export const BankrollStandOverlay = () => {
       <div style={{
         ...overlayBaseStyle, 
         flexDirection: 'column', 
-        gap: '4px', 
-        width: '200px',
+        gap: '6px', 
+        width: '220px',
         height: '100px',
-        opacity: isLoading ? 0.7 : 1
+        opacity: isLoading ? 0.7 : 1,
+        borderColor: error ? '#dc2626' : '#0d5f3f'
       }}>
-        <div style={{...labelStyle, ...goldStyle, fontSize: '0.8rem'}}>
-          {activeBankroll.name}
+        <div style={{...labelStyle, fontSize: '0.8rem'}}>
+          {error ? 'ERROR' : activeBankroll.name}
         </div>
-        <div style={{...valueStyle, fontSize: '1.6rem'}}>
-          {formatCurrency(activeBankroll.current_amount, activeBankroll.currency)}
+        <div style={{...valueStyle, fontSize: '2rem'}}>
+          {error 
+            ? 'N/A'
+            : formatCurrency(activeBankroll.current_amount, activeBankroll.currency)
+          }
         </div>
-        <div style={{
-          fontSize: '1rem',
-          fontWeight: '600',
-          color: isProfit ? positiveStyle.color : negativeStyle.color,
-          margin: '0'
-        }}>
-          {isProfit ? '+' : ''}{formatCurrency(profit, activeBankroll.currency)}
-        </div>
-        {bankrollId && (
-          <div style={{...labelStyle, fontSize: '0.6rem', opacity: 0.5}}>
-            ID: {bankrollId}
+        {!error && (
+          <div style={{
+            ...labelStyle,
+            color: isProfit ? positiveStyle.color : negativeStyle.color,
+            fontSize: '0.9rem'
+          }}>
+            {isProfit ? '+' : ''}{formatCurrency(activeBankroll.total_profit, activeBankroll.currency)} Total
           </div>
         )}
       </div>
@@ -300,12 +341,12 @@ export const BankrollStandOverlay = () => {
   );
 };
 
-// 4. Cash Count Overlay
+// ✅ KORRIGIERTE Cash Count Overlay
 export const CashCountOverlay = () => {
   const urlParams = new URLSearchParams(window.location.search);
   const bankrollId = urlParams.get('bankroll');
   
-  const { activeSession, isLoading } = useLiveData(bankrollId);
+  const { activeSession, isLoading, error } = useLiveData(bankrollId);
   
   return (
     <div style={overlayContainerStyle}>
@@ -316,30 +357,29 @@ export const CashCountOverlay = () => {
         gap: '4px', 
         width: '120px',
         height: '80px',
-        opacity: isLoading ? 0.7 : 1
+        opacity: isLoading ? 0.7 : 1,
+        borderColor: error ? '#dc2626' : '#0d5f3f'
       }}>
         <div style={{fontSize: '1.2rem', margin: '0'}}>🏆</div>
         <div style={{...valueStyle, ...goldStyle, fontSize: '2rem'}}>
-          {activeSession.cash_count}
+          {error ? '?' : activeSession.cash_count}
         </div>
-        <div style={{...labelStyle, fontSize: '0.8rem'}}>Cashes</div>
-        {bankrollId && (
-          <div style={{...labelStyle, fontSize: '0.6rem', opacity: 0.5}}>
-            ID: {bankrollId}
-          </div>
-        )}
+        <div style={{...labelStyle, fontSize: '0.8rem'}}>
+          {error ? 'ERROR' : 'Cashes'}
+        </div>
       </div>
     </div>
   );
 };
 
-// 5. Session Profit Overlay (BONUS)
+// ✅ KORRIGIERTE Session Profit Overlay
 export const SessionProfitOverlay = () => {
   const urlParams = new URLSearchParams(window.location.search);
   const bankrollId = urlParams.get('bankroll');
   
-  const { activeSession, activeBankroll, isLoading } = useLiveData(bankrollId);
-  const sessionProfit = activeSession.profit || (activeSession.total_cashes - activeSession.total_buyins);
+  const { activeSession, activeBankroll, isLoading, error } = useLiveData(bankrollId);
+  
+  const sessionProfit = activeSession.profit;
   const isProfit = sessionProfit >= 0;
   
   return (
@@ -352,23 +392,26 @@ export const SessionProfitOverlay = () => {
         width: '160px',
         height: '80px',
         opacity: isLoading ? 0.7 : 1,
-        background: isProfit 
-          ? 'linear-gradient(135deg, rgba(22, 163, 74, 0.9) 0%, rgba(13, 95, 63, 0.9) 100%)'
-          : 'linear-gradient(135deg, rgba(220, 38, 38, 0.9) 0%, rgba(153, 27, 27, 0.9) 100%)'
+        borderColor: error ? '#dc2626' : (isProfit ? '#16a34a' : '#dc2626'),
+        background: error 
+          ? 'linear-gradient(135deg, rgba(220, 38, 38, 0.9) 0%, rgba(153, 27, 27, 0.9) 100%)'
+          : isProfit 
+            ? 'linear-gradient(135deg, rgba(22, 163, 74, 0.9) 0%, rgba(13, 95, 63, 0.9) 100%)'
+            : 'linear-gradient(135deg, rgba(220, 38, 38, 0.9) 0%, rgba(153, 27, 27, 0.9) 100%)'
       }}>
-        <div style={labelStyle}>Session P/L</div>
+        <div style={labelStyle}>
+          {error ? 'ERROR' : 'Session P/L'}
+        </div>
         <div style={{
           ...valueStyle, 
-          color: isProfit ? positiveStyle.color : negativeStyle.color,
+          color: error ? '#ffffff' : (isProfit ? '#ffffff' : '#ffffff'),
           fontSize: '1.4rem'
         }}>
-          {isProfit ? '+' : ''}{formatCurrency(sessionProfit, activeBankroll.currency)}
+          {error 
+            ? 'N/A'
+            : `${isProfit ? '+' : ''}${formatCurrency(sessionProfit, activeBankroll.currency)}`
+          }
         </div>
-        {bankrollId && (
-          <div style={{...labelStyle, fontSize: '0.6rem', opacity: 0.5}}>
-            ID: {bankrollId}
-          </div>
-        )}
       </div>
     </div>
   );
@@ -377,11 +420,11 @@ export const SessionProfitOverlay = () => {
 // Overlay Index (für Testing und Setup)
 export const OBSOverlaysIndex = () => {
   const overlays = [
-    { name: 'Session Buy-Ins', path: '/obs/buyins', size: '180x80px', description: 'Total eingezahlte Buy-Ins der aktuellen Session' },
-    { name: 'Session Cashes', path: '/obs/cashes', size: '180x80px', description: 'Total Cash-Outs der aktuellen Session' },
-    { name: 'Bankroll Balance', path: '/obs/bankroll', size: '200x100px', description: 'Aktuelle Bankroll mit Gesamtprofit' },
+    { name: 'Session Buy-Ins', path: '/obs/buyins', size: '180x80px', description: '✅ KORRIGIERT: Total Buy-Ins (buy_in × entries) der aktuellen Session' },
+    { name: 'Session Cashes', path: '/obs/cashes', size: '180x80px', description: '✅ KORRIGIERT: Total Cash-Outs der aktuellen Session' },
+    { name: 'Bankroll Balance', path: '/obs/bankroll', size: '220x100px', description: '✅ KORRIGIERT: Aktuelle Bankroll mit korrektem Gesamtprofit aus Backend' },
     { name: 'Cash Count', path: '/obs/cash-count', size: '120x80px', description: 'Anzahl erfolgreicher Cash-Outs' },
-    { name: 'Session Profit/Loss', path: '/obs/session-profit', size: '160x80px', description: 'Profit/Verlust der aktuellen Session' }
+    { name: 'Session Profit/Loss', path: '/obs/session-profit', size: '160x80px', description: '✅ KORRIGIERT: Profit/Verlust (Cashes - Buy-ins)' }
   ];
 
   return (
@@ -400,17 +443,35 @@ export const OBSOverlaysIndex = () => {
         textAlign: 'center',
         marginBottom: '1rem'
       }}>
-        🎥 BankrollGod OBS Overlays
+        🎥 BankrollGod OBS Overlays - KORRIGIERT
       </h1>
       
       <p style={{
         textAlign: 'center',
         color: '#a0a0a0',
-        marginBottom: '3rem',
+        marginBottom: '1rem',
         fontSize: '1.1rem'
       }}>
-        Live-Updates alle 5 Sekunden • Production-ready für OBS Browser Sources
+        Live-Updates alle 3 Sekunden • Buy-ins = buy_in × entries • Bankroll aus Backend
       </p>
+
+      <div style={{
+        background: 'rgba(22, 163, 74, 0.1)',
+        border: '2px solid #16a34a',
+        borderRadius: '12px',
+        padding: '1rem',
+        margin: '0 auto 3rem',
+        maxWidth: '600px',
+        textAlign: 'center'
+      }}>
+        <h3 style={{color: '#16a34a', margin: '0 0 0.5rem 0'}}>✅ PROBLEME BEHOBEN</h3>
+        <ul style={{color: '#a0a0a0', textAlign: 'left', margin: '0', paddingLeft: '1.5rem'}}>
+          <li>Buy-ins werden jetzt korrekt als <strong>buy_in × entries</strong> berechnet</li>
+          <li>Bankroll-Information kommt direkt aus dem Backend</li>
+          <li>Bessere Fehlerbehandlung bei API-Problemen</li>
+          <li>Schnellere Updates (3 Sekunden statt 5)</li>
+        </ul>
+      </div>
       
       <div style={{
         display: 'grid',
@@ -458,7 +519,7 @@ export const OBSOverlaysIndex = () => {
               justifyContent: 'center'
             }}>
               <iframe 
-                src={overlay.path}
+                src={`${overlay.path}?bankroll=demo`}
                 width="100%" 
                 height="100"
                 frameBorder="0"
@@ -549,11 +610,23 @@ export const OBSOverlaysIndex = () => {
           fontSize: '1rem'
         }}>
           <li><strong>Source hinzufügen</strong> → Browser Source</li>
-          <li><strong>URL einfügen</strong> (ersetze YOUR_BANKROLL_ID mit echter ID)</li>
-          <li><strong>Größe einstellen</strong> entsprechend Badge</li>
+          <li><strong>URL einfügen</strong> (ersetze YOUR_BANKROLL_ID mit echter Bankroll ID)</li>
+          <li><strong>Größe einstellen</strong> entsprechend Badge (z.B. 180x80 für Buy-ins)</li>
           <li><strong>"Refresh when scene becomes active"</strong> aktivieren</li>
-          <li><strong>Optional:</strong> Custom CSS für weitere Anpassungen</li>
+          <li><strong>Backend API:</strong> Stelle sicher dass /api/obs/ Routen verfügbar sind</li>
         </ol>
+        
+        <div style={{
+          background: 'rgba(22, 163, 74, 0.1)',
+          border: '1px solid #16a34a',
+          borderRadius: '8px',
+          padding: '1rem',
+          marginTop: '1rem'
+        }}>
+          <p style={{color: '#16a34a', margin: '0', fontSize: '0.9rem'}}>
+            ℹ️ <strong>Backend-Setup erforderlich:</strong> Stelle sicher, dass die neue obs.js Route in deinem Express-Server eingebunden ist!
+          </p>
+        </div>
       </div>
     </div>
   );

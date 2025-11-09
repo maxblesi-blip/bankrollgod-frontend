@@ -15,7 +15,7 @@ import {
   OBSOverlaysIndex,
   SessionBuyInsOverlay,
   SessionCashesOverlay,
-  BankrollStandOverlay,
+  BankrollBalanceOverlay,
   CashCountOverlay,
   SessionProfitOverlay  // ← NEU: Session Profit/Loss Overlay
 } from './components/OBSOverlays';
@@ -351,7 +351,7 @@ const AppRouter = () => {
           <Route path="/obs" element={<OBSOverlaysIndex />} />
           <Route path="/obs/buyins" element={<SessionBuyInsOverlay />} />
           <Route path="/obs/cashes" element={<SessionCashesOverlay />} />
-          <Route path="/obs/bankroll" element={<BankrollStandOverlay />} />
+          <Route path="/obs/bankroll" element={<BankrollBalanceOverlay />} />
           <Route path="/obs/cash-count" element={<CashCountOverlay />} />
           <Route path="/obs/session-profit" element={<SessionProfitOverlay />} />
           
